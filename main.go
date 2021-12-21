@@ -37,10 +37,6 @@ func providerFactory(meta discovery.PluginMeta) providers.Factory {
 	}
 }
 
-func blockToNixOSModule() {
-
-}
-
 func readValue(filePath string, schema providers.Schema) (cty.Value, error) {
 
 	jsonFile, err := os.Open(filePath)
@@ -67,9 +63,6 @@ func readValue(filePath string, schema providers.Schema) (cty.Value, error) {
 
 func main() {
 	path := os.Args[1]
-	providerPath := os.Args[2]
-	oldState := os.Args[3]
-	newState := os.Args[4]
 	meta := discovery.PluginMeta{
 		Name:    "terraform-provider-digitalocean", //"terraform-provider-aws",
 		Version: "2.23.0",                          //"2.23.0",
@@ -81,67 +74,8 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-
 	schemaResponse := provider.GetSchema()
-	providerSchema := schemaResponse.Provider
 
-	value, err := readValue(providerPath, providerSchema)
-	configureRequest := providers.ConfigureRequest{
-		TerraformVersion: "mock",
-		Config:           value,
-	}
-	configureResponse := provider.Configure(configureRequest)
+	spew.Dump(schemaResponse)
 
-	if err = configureResponse.Diagnostics.Err(); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	dropletSchema := schemaResponse.ResourceTypes["digitalocean_droplet"]
-
-	priorState, err := readValue(oldState, dropletSchema)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	proposedState, err := readValue(newState, dropletSchema)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	// so apparently I need to provide the priorState and proposedState. The
-	// format of state seems undocumented on first sight though. as it's not the
-	// same as the config
-
-	nullConfig := cty.NullVal(dropletSchema.Block.ImpliedType()) // providers shouldn't use the config. if they do they're buggy :P
-	planResponse := provider.PlanResourceChange(providers.PlanResourceChangeRequest{
-		TypeName:         "digitalocean_droplet",
-		PriorState:       priorState,
-		ProposedNewState: proposedState,
-		Config:           nullConfig,
-		PriorPrivate:     nil,
-	})
-
-	if err = planResponse.Diagnostics.Err(); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	spew.Dump(planResponse)
-
-	/*
-		applyResponse := provider.ApplyResourceChange(providers.ApplyResourceChangeRequest{
-			TypeName:       "digitalocean_droplet",
-			PriorState:     priorState,
-			PlannedState:   planResponse.PlannedState,
-			Config:         nullConfig,
-			PlannedPrivate: planResponse.PlannedPrivate,
-		})
-
-		if err = applyResponse.Diagnostics.Err(); err != nil {
-			fmt.Println(err)
-			return
-		}*/
 }
